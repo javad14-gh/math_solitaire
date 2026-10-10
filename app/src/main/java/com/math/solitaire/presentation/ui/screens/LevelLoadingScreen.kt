@@ -114,13 +114,13 @@ fun LevelLoadingScreen(
     val title = if (levelNumber > 0) {
         LocaleHelper.levelTitle(levelNumber, isPersian)
     } else {
-        if (isPersian) "پاسور کلمات" else "Kelime Solitaire"
+        if (isPersian) "سولیتر ریاضی" else "Math Solitaire"
     }
 
     val subtitle = if (isPersian) {
         "در حال چیدمان و بر زدن کارت‌ها..."
     } else {
-        "Kartlar diziliyor ve karıştırılıyor..."
+        "Dealing and shuffling cards..."
     }
 
     Box(

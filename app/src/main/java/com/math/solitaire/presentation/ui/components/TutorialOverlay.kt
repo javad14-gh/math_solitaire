@@ -36,9 +36,9 @@ fun BoosterUnlockDialog(
     onDismiss: () -> Unit
 ) {
     val title = when (tutorialType) {
-        TutorialType.UNDO_UNLOCK -> if (isPersian) "قابلیت بازگشت باز شد! 🎉" else "Geri Al Özelliği Açıldı! 🎉"
-        TutorialType.HINT_UNLOCK -> if (isPersian) "راهنما در مراحل سخت! 💡" else "Zor Seviye İpucu Açıldı! 💡"
-        TutorialType.JOKER_UNLOCK -> if (isPersian) "برگ برنده: کارت جوکر! 🃏" else "Süper Kart: Joker Açıldı! 🃏"
+        TutorialType.UNDO_UNLOCK -> if (isPersian) "قابلیت بازگشت باز شد! 🎉" else "Undo Booster Unlocked! 🎉"
+        TutorialType.HINT_UNLOCK -> if (isPersian) "راهنما در مراحل سخت! 💡" else "Hint Booster Unlocked! 💡"
+        TutorialType.JOKER_UNLOCK -> if (isPersian) "برگ برنده: کارت جوکر! 🃏" else "Joker Card Unlocked! 🃏"
         else -> ""
     }
 
@@ -46,22 +46,22 @@ fun BoosterUnlockDialog(
         TutorialType.UNDO_UNLOCK -> if (isPersian) {
             "از این پس می‌توانید آخرین حرکت خود را برگردانید.\nبرای شروع، ۱ استفاده کاملاً رایگان هدیه به شما! 🎁"
         } else {
-            "Artık yaptığınız son hamleyi geri alabilirsiniz.\nBaşlangıç için ilk kullanım tamamen ÜCRETSİZ! 🎁"
+            "You can now undo your last move.\nEnjoy 1 free use to get started! 🎁"
         }
         TutorialType.HINT_UNLOCK -> if (isPersian) {
             "به مراحل سخت بازی رسیدید! دکمه راهنما بهترین حرکت ممکن را به شما نشان می‌دهد.\n۱ راهنمای رایگان هدیه شما! 🎁"
         } else {
-            "Zor seviyelere ulaştınız! İpucu düğmesi size en uygun hamleyi gösterir.\nİlk ipucunuz tamamen ÜCRETSİZ! 🎁"
+            "You reached challenging levels! Hint shows you the best available move.\nEnjoy 1 free Hint! 🎁"
         }
         TutorialType.JOKER_UNLOCK -> if (isPersian) {
-            "مرحله خیلی سخت! کارت جوکر در هر دسته‌ای می‌نشیند و راه را باز می‌کند.\n۱ کارت جوکر رایگان هدیه شما! 🎁"
+            "مرحله خیلی سخت! کارت جوکر روی هر عدد هدفی می‌نشیند و راه را باز می‌کند.\n۱ کارت جوکر رایگان هدیه شما! 🎁"
         } else {
-            "Çok Zor seviye! Joker kartı her kategoriyle eşleşir ve tıkanıklığı çözer.\nİlk kullanım tamamen ÜCRETSİZ! 🎁"
+            "Very Hard level! Joker card matches any target number and clears blocked cards.\nEnjoy 1 free Joker! 🎁"
         }
         else -> ""
     }
 
-    val buttonText = if (isPersian) "متوجه شدم و دریافت هدیه 🎁" else "Anladım ve Hediyeyi Al 🎁"
+    val buttonText = if (isPersian) "متوجه شدم و دریافت هدیه 🎁" else "Got It & Claim Gift 🎁"
 
     // Backdrop with Dark Blur feeling
     Box(
@@ -211,23 +211,23 @@ fun Level1InteractiveBanner(
 ) {
     val message = when (step) {
         0 -> if (isPersian) {
-            "👑 کارت دسته را بکشید و در یکی از جایگاه‌های خالی بالا بگذارید"
+            "👑 کارت عدد هدف را بکشید و در یکی از جایگاه‌های خالی بالا بگذارید"
         } else {
-            "👑 Kategori kartını yukarıdaki boş alana sürükleyip bırakın"
+            "👑 Drag the target number card to an empty slot above"
         }
         1 -> if (isPersian) {
-            "✨ آفرین! حالا کلمات مربوط به این دسته را روی آن قرار دهید"
+            "✨ عالی! حالا کارت‌های معادل این عدد را روی آن قرار دهید"
         } else {
-            "✨ Harika! Şimdi bu kategoriye ait kelimeleri üzerine yerleştirin"
+            "✨ Great! Now place cards that equal this number on it"
         }
         else -> if (isPersian) {
-            "🃏 اگر حرکتی ندارید، روی دسته کارت‌های سمت راست بزنید"
+            "🃏 اگر حرکتی ندارید، از دسته کارت‌های سمت راست کارت بکشید"
         } else {
-            "🃏 Hamle kalmadıysa sağdaki desteden kart çekin"
+            "🃏 If you have no moves, draw from the stock pile"
         }
     }
 
-    val skipText = if (isPersian) "رد کردن آموزش" else "Atla"
+    val skipText = if (isPersian) "رد کردن آموزش" else "Skip"
 
     Box(
         modifier = Modifier

@@ -371,7 +371,8 @@ fun WordCard(
                     longestSubword >= 10 -> 12.5.sp
                     longestSubword >= 8 -> 14.sp
                     longestSubword >= 6 -> 15.5.sp
-                    else -> 17.sp
+                    longestSubword <= 4 -> 22.sp
+                    else -> 18.sp
                 }
                 val dynamicLetterSpacing = when {
                     longestSubword >= 11 -> (-0.5).sp

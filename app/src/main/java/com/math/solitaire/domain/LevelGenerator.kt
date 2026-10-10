@@ -53,7 +53,7 @@ class LevelGenerator {
 
         var attempts = 0
         while (attempts < 200) {
-            val seed = levelNumber.toLong() + (attempts * 1000L)
+            val seed = (levelNumber.toLong() * 0x5DEECE66DL) xor (attempts.toLong() * 0x517CC1B7L)
             val random = Random(seed)
 
             // 1. Generate target numbers for this level
@@ -178,14 +178,21 @@ class LevelGenerator {
         }
 
         // If not enough unique expressions, pad with addition variants
-        var extra = 1
-        while (results.size < count && extra < 200) {
-            val a = extra
+        var a = 1
+        while (results.size < count && a <= target / 2) {
             val b = target - a
-            if (b > 0 && a != b) {
+            if (b > 0) {
                 results.add("$a + $b")
             }
-            extra++
+            a++
+        }
+
+        // If still needed, pad with subtraction
+        var s = 1
+        while (results.size < count && s <= 50) {
+            val big = target + s
+            results.add("$big − $s")
+            s++
         }
 
         return results.take(count)
@@ -194,44 +201,96 @@ class LevelGenerator {
     private fun buildCandidates(target: Int, difficulty: String): List<String> {
         val list = mutableListOf<String>()
 
-        // Addition: a + b = target  (a from 1 to target-1)
-        for (a in 1 until target) {
+        // 1. Two-term Addition: a + b = target with a <= b (avoids commutative duplicates)
+        for (a in 1..(target / 2)) {
             val b = target - a
             if (b > 0) list.add("$a + $b")
         }
 
-        if (difficulty in listOf("Medium", "Hard", "VeryHard")) {
-            // Subtraction: a − b = target  (a from target+1 to target*2)
-            val maxA = when (difficulty) {
-                "Medium"   -> minOf(50, target * 2)
-                "Hard"     -> minOf(100, target * 2)
-                else       -> minOf(200, target * 3)
-            }
-            for (a in (target + 1)..maxA) {
-                val b = a - target
-                if (b > 0 && b != a) list.add("$a − $b")
+        // 2. Three-term Addition for targets >= 6 (1 <= a <= b <= c)
+        if (target >= 6) {
+            for (a in 1..(target / 3)) {
+                for (b in a..((target - a) / 2)) {
+                    val c = target - a - b
+                    if (c >= b) {
+                        list.add("$a + $b + $c")
+                    }
+                }
             }
         }
 
-        if (difficulty in listOf("Hard", "VeryHard")) {
-            // Multiplication: a × b = target
+        // 3. Subtraction: a − b = target
+        val maxOffset = when (difficulty) {
+            "Easy"     -> minOf(6, target)
+            "Medium"   -> minOf(20, target * 2)
+            "Hard"     -> minOf(40, target * 2)
+            else       -> minOf(60, target * 3)
+        }
+        for (b in 1..maxOffset) {
+            val a = target + b
+            list.add("$a − $b")
+        }
+
+        // 4. Multiplication: a × b = target with 2 <= a <= b
+        if (difficulty in listOf("Medium", "Hard", "VeryHard")) {
             for (a in 2..12) {
                 if (target % a == 0) {
                     val b = target / a
-                    if (b >= 2 && b <= 12 && a != b) {
-                        list.add("$a × $b")
-                    } else if (b >= 2 && b <= 12 && a <= b) {
+                    if (b >= 2 && a <= b) {
                         list.add("$a × $b")
                     }
                 }
             }
         }
 
-        if (difficulty == "VeryHard") {
-            // Division: a ÷ b = target
+        // 5. Division: a ÷ b = target
+        if (difficulty in listOf("Hard", "VeryHard")) {
             for (b in 2..12) {
                 val a = target * b
                 if (a <= 144) list.add("$a ÷ $b")
+            }
+        }
+
+        // 6. Powers & Roots
+        // Perfect Square: a² = target
+        if (difficulty in listOf("Medium", "Hard", "VeryHard")) {
+            for (root in 2..12) {
+                if (root * root == target) {
+                    list.add("${root}²")
+                }
+            }
+        }
+        // Square Root: √a = target
+        if (difficulty in listOf("Hard", "VeryHard") && target in 2..12) {
+            list.add("√${target * target}")
+        }
+        // Cube: a³ = target
+        if (difficulty in listOf("Hard", "VeryHard")) {
+            for (root in 2..5) {
+                if (root * root * root == target) {
+                    list.add("${root}³")
+                }
+            }
+        }
+
+        // 7. Compound with Parentheses: (a + b) × c = target or (a − b) × c = target
+        if (difficulty in listOf("Hard", "VeryHard")) {
+            for (c in 2..6) {
+                if (target % c == 0) {
+                    val sumOrDiff = target / c
+                    // (a + b) * c
+                    for (a in 1..(sumOrDiff / 2)) {
+                        val b = sumOrDiff - a
+                        if (a != b) {
+                            list.add("($a + $b) × $c")
+                        }
+                    }
+                    // (a − b) * c
+                    for (b in 1..4) {
+                        val a = sumOrDiff + b
+                        list.add("($a − $b) × $c")
+                    }
+                }
             }
         }
 
@@ -247,10 +306,10 @@ class LevelGenerator {
         lastUsedIds: Set<String>
     ): List<Int> {
         val range = when (difficulty) {
-            "Easy"     -> 5..20
-            "Medium"   -> 5..50
-            "Hard"     -> 4..100
-            else       -> 4..144
+            "Easy"     -> 6..24
+            "Medium"   -> 8..50
+            "Hard"     -> 8..100
+            else       -> 12..144
         }
 
         val pool = range.toMutableList().shuffled(random).toMutableList()
@@ -293,7 +352,7 @@ class LevelGenerator {
         wordsPerCategory: Int,
         steppedCounts: List<Int>
     ): LevelData {
-        val random = Random(levelNumber.toLong())
+        val random = Random(levelNumber.toLong() * 0x5DEECE66DL)
         val targets = generateTargets(difficultyLevel, numCategories, random, emptySet())
         val categories = targets.map { num ->
             Category(id = "cat_$num", name = formatNumber(num), difficulty = difficultyLevel, targetNumber = num)
@@ -380,7 +439,7 @@ class LevelGenerator {
         categoryWordCounts: Map<String, Int>
     ): Boolean {
         if (matchedCount >= totalWordsToMatch) return true
-        if (visited.size > 4000) return false
+        if (visited.size > 8000) return false
 
         val stateKey = generateStateKey(tableaus, stock, waste, activeSlots)
         if (visited.contains(stateKey)) return false
