@@ -411,16 +411,26 @@ fun WordCard(
                         }
                     }
                 } else {
-                    val mathTokens = remember(card.text) {
+                    val twoTermTokens = remember(card.text) {
                         val t = card.text.trim().split("\\s+".toRegex())
                         if (t.size == 3 && t[1] in listOf("+", "-", "−", "×", "x", "X", "*", "÷", "/")) {
                             t
                         } else null
                     }
 
+                    val threeTermTokens = remember(card.text) {
+                        val t = card.text.trim().split("\\s+".toRegex())
+                        if (t.size == 5 &&
+                            t[1] in listOf("+", "-", "−") &&
+                            t[3] in listOf("+", "-", "−")
+                        ) {
+                            t
+                        } else null
+                    }
+
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 5.dp)
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
                     ) {
                         if (isJoker) {
                             Text(
@@ -439,15 +449,15 @@ fun WordCard(
                                 fontWeight = FontWeight.W800,
                                 textAlign = TextAlign.Center
                             )
-                        } else if (mathTokens != null) {
-                            val op1 = mathTokens[0]
-                            val opSymbol = when (mathTokens[1]) {
+                        } else if (twoTermTokens != null) {
+                            val op1 = twoTermTokens[0]
+                            val opSymbol = when (twoTermTokens[1]) {
                                 "*", "x", "X" -> "×"
                                 "-" -> "−"
                                 "/" -> "÷"
-                                else -> mathTokens[1]
+                                else -> twoTermTokens[1]
                             }
-                            val op2 = mathTokens[2]
+                            val op2 = twoTermTokens[2]
                             val maxOpLen = maxOf(op1.length, op2.length)
                             val mathNumSize = if (maxOpLen >= 3) 17.sp else 20.sp
 
@@ -489,6 +499,94 @@ fun WordCard(
                                         .padding(top = 2.dp)
                                         .width(50.dp)
                                         .height(2.5.dp)
+                                        .background(CardFaceText)
+                                )
+                            }
+                        } else if (threeTermTokens != null) {
+                            val op1 = threeTermTokens[0]
+                            val sym1 = if (threeTermTokens[1] == "-") "−" else threeTermTokens[1]
+                            val op2 = threeTermTokens[2]
+                            val sym2 = if (threeTermTokens[3] == "-") "−" else threeTermTokens[3]
+                            val op3 = threeTermTokens[4]
+
+                            val maxLen = maxOf(op1.length, op2.length, op3.length)
+                            val mathNumSize = if (maxLen >= 3) 14.5.sp else 16.5.sp
+                            val isAllAddition = sym1 == "+" && sym2 == "+"
+
+                            Column(
+                                horizontalAlignment = Alignment.End,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                // Row 1
+                                Text(
+                                    text = op1,
+                                    color = CardFaceText,
+                                    fontFamily = nunitoFont,
+                                    fontSize = mathNumSize,
+                                    fontWeight = FontWeight.Black,
+                                    textAlign = TextAlign.End
+                                )
+                                // Row 2
+                                if (isAllAddition) {
+                                    Text(
+                                        text = op2,
+                                        color = CardFaceText,
+                                        fontFamily = nunitoFont,
+                                        fontSize = mathNumSize,
+                                        fontWeight = FontWeight.Black,
+                                        textAlign = TextAlign.End
+                                    )
+                                } else {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.End
+                                    ) {
+                                        Text(
+                                            text = sym1,
+                                            color = CardFaceText,
+                                            fontFamily = nunitoFont,
+                                            fontSize = (mathNumSize.value * 0.9f).sp,
+                                            fontWeight = FontWeight.Black,
+                                            modifier = Modifier.padding(end = 4.dp)
+                                        )
+                                        Text(
+                                            text = op2,
+                                            color = CardFaceText,
+                                            fontFamily = nunitoFont,
+                                            fontSize = mathNumSize,
+                                            fontWeight = FontWeight.Black,
+                                            textAlign = TextAlign.End
+                                        )
+                                    }
+                                }
+                                // Row 3
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    Text(
+                                        text = sym2,
+                                        color = CardFaceText,
+                                        fontFamily = nunitoFont,
+                                        fontSize = (mathNumSize.value * 0.9f).sp,
+                                        fontWeight = FontWeight.Black,
+                                        modifier = Modifier.padding(end = 4.dp)
+                                    )
+                                    Text(
+                                        text = op3,
+                                        color = CardFaceText,
+                                        fontFamily = nunitoFont,
+                                        fontSize = mathNumSize,
+                                        fontWeight = FontWeight.Black,
+                                        textAlign = TextAlign.End
+                                    )
+                                }
+                                // Horizontal divider line
+                                Box(
+                                    modifier = Modifier
+                                        .padding(top = 2.dp)
+                                        .width(52.dp)
+                                        .height(2.dp)
                                         .background(CardFaceText)
                                 )
                             }
