@@ -1,0 +1,518 @@
+package com.math.solitaire.presentation.ui.components
+
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalContext
+import com.math.solitaire.presentation.util.LocaleHelper
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
+import com.math.solitaire.R
+import androidx.compose.ui.graphics.SolidColor
+import com.math.solitaire.data.model.SolitaireCard
+import com.math.solitaire.presentation.ui.theme.AccentGold
+import com.math.solitaire.presentation.ui.theme.CardBackBg
+import com.math.solitaire.presentation.ui.theme.CardCategoryBg
+import com.math.solitaire.presentation.ui.theme.CardCategoryBorder
+import com.math.solitaire.presentation.ui.theme.CardCategoryCrown
+import com.math.solitaire.presentation.ui.theme.CardCategoryText
+import com.math.solitaire.presentation.ui.theme.CardDraggingBorder
+import com.math.solitaire.presentation.ui.theme.CardFaceBg
+import com.math.solitaire.presentation.ui.theme.CardFaceBorder
+import com.math.solitaire.presentation.ui.theme.CardFaceInnerBorder
+import com.math.solitaire.presentation.ui.theme.CardFaceText
+import com.math.solitaire.presentation.ui.theme.CardSelectedBorder
+import com.math.solitaire.presentation.ui.theme.ErrorRed
+import kotlin.math.roundToInt
+
+@Composable
+fun WordCard(
+    card: SolitaireCard,
+    isSelected: Boolean,
+    isShaking: Boolean,
+    isShattering: Boolean = false,
+    isHinted: Boolean = false,
+    isDragged: Boolean,
+    dragZIndex: Float = 0f,
+    dragOffsetProvider: () -> Offset = { Offset.Zero },
+    isInteractionEnabled: Boolean,
+    onTap: () -> Unit,
+    onDragStart: () -> Unit,
+    onDrag: (Offset) -> Unit,
+    onDragEnd: (Offset) -> Unit,
+    onDragCancel: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isFaceUp = card.isFaceUp
+    val context = LocalContext.current
+    val isPersian = remember(context) { LocaleHelper.isPersian(context) }
+    val nunitoFont = rememberNunitoFont()
+    
+    // Wrap callbacks and value arguments in rememberUpdatedState to prevent capturing stale values
+    val currentInteractionEnabled by rememberUpdatedState(isInteractionEnabled)
+    val currentDragOffsetProvider by rememberUpdatedState(dragOffsetProvider)
+    val currentOnTap by rememberUpdatedState(onTap)
+    val currentOnDragStart by rememberUpdatedState(onDragStart)
+    val currentOnDrag by rememberUpdatedState(onDrag)
+    val currentOnDragEnd by rememberUpdatedState(onDragEnd)
+    val currentOnDragCancel by rememberUpdatedState(onDragCancel)
+
+    // Bounds calculations
+    var cardPositionInRoot by remember { mutableStateOf(Offset.Zero) }
+    var cardSize by remember { mutableStateOf(IntSize.Zero) }
+
+    // Shake keyframe animation for matches errors
+    val shakeX = remember { Animatable(0f) }
+    LaunchedEffect(isShaking) {
+        if (isShaking) {
+            shakeX.animateTo(
+                targetValue = 0f,
+                animationSpec = keyframes {
+                    durationMillis = 500
+                    -20f at 50
+                    20f at 150
+                    -15f at 250
+                    15f at 350
+                    -8f at 450
+                }
+            )
+        }
+    }
+
+    // Shatter & Crumble animation for exposed Joker cards
+    val shatterAlpha = remember { Animatable(1f) }
+    val shatterScale = remember { Animatable(1f) }
+    val shatterOffsetY = remember { Animatable(0f) }
+    val shatterRotation = remember { Animatable(0f) }
+
+    LaunchedEffect(isShattering) {
+        if (isShattering) {
+            launch { shatterAlpha.animateTo(0f, tween(600, easing = LinearOutSlowInEasing)) }
+            launch { shatterScale.animateTo(0.3f, tween(600, easing = LinearOutSlowInEasing)) }
+            launch { shatterOffsetY.animateTo(140f, tween(600, easing = LinearOutSlowInEasing)) }
+            launch { shatterRotation.animateTo(30f, tween(600, easing = LinearOutSlowInEasing)) }
+        }
+    }
+
+    // Hint pulsing animation - only allocated & ticked when card is actually hinted!
+    val (hintPulseScale, hintGlowAlpha) = if (isHinted) {
+        val infiniteTransition = rememberInfiniteTransition(label = "hintPulse")
+        val pScale by infiniteTransition.animateFloat(
+            initialValue = 1.0f,
+            targetValue = 1.08f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(400, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "hintScale"
+        )
+        val pAlpha by infiniteTransition.animateFloat(
+            initialValue = 0.5f,
+            targetValue = 1.0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(400, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "hintAlpha"
+        )
+        Pair(pScale, pAlpha)
+    } else {
+        Pair(1.0f, 1.0f)
+    }
+
+    val scale = if (isDragged) 1.15f else if (isSelected) 1.05f else if (isHinted) hintPulseScale else 1.0f
+    val elevation = when {
+        isDragged -> 12.dp
+        isHinted -> 8.dp
+        isSelected -> 4.dp
+        else -> 0.dp
+    }
+    
+    val isJoker = card.categoryId == "joker_wildcard"
+
+    // Board outline styling:
+    val borderColor = when {
+        !isFaceUp -> Color.White // تمام کارت‌های پشت‌رو دقیقاً یکسان با کادر سفید هستند
+        isShaking -> ErrorRed
+        isHinted -> Color(0xFFFFD700).copy(alpha = hintGlowAlpha)
+        isDragged -> CardDraggingBorder
+        isSelected -> CardSelectedBorder
+        isJoker -> Color(0xFF7E22CE) // Vibrant Purple Border for Joker!
+        card.isCategory -> CardCategoryBorder // کادر بولد و مشخص فقط هنگام رو بودن کارت دسته‌بندی
+        else -> CardFaceBorder // کادر بیرونی بسیار نازک روی کارت‌های معمولی
+    }
+
+    val borderWidth = when {
+        !isFaceUp -> 1.dp
+        isHinted -> 3.dp
+        card.isCategory -> 3.5.dp // کادر کلفت‌تر و برجسته برای کارت دسته‌بندی
+        isDragged -> 2.5.dp
+        isJoker || isSelected || isShaking -> 2.dp
+        else -> 0.75.dp // کادر بیرونی بسیار نازک
+    }
+
+    val cardBrush = when {
+        !isFaceUp -> SolidColor(CardBackBg)
+        isJoker -> Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFFFEF08A), // Vibrant golden yellow top
+                Color(0xFFFDE047), // Deep yellow middle
+                Color(0xFFEAB308)  // Rich golden bottom
+            )
+        )
+        // کارت دسته‌بندی نیز مانند سایر کارت‌ها از رنگ یکدست CardFaceBg استفاده می‌کند
+        else -> SolidColor(CardFaceBg)
+    }
+
+    Card(
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        shape = RoundedCornerShape(8.dp),
+        modifier = modifier
+            .zIndex(if (isDragged) 100f + dragZIndex else 0f)
+            .graphicsLayer {
+                if (isShattering) {
+                    alpha = shatterAlpha.value
+                    scaleX = shatterScale.value
+                    scaleY = shatterScale.value
+                    translationY = shatterOffsetY.value
+                    rotationZ = shatterRotation.value
+                } else {
+                    scaleX = scale
+                    scaleY = scale
+                }
+            }
+            // 1. Measure the static layout slot bounds (placed BEFORE drag offset!)
+            .onGloballyPositioned { coordinates ->
+                if (!isDragged) {
+                    cardPositionInRoot = coordinates.positionInRoot()
+                    cardSize = coordinates.size
+                }
+            }
+            .offset {
+                IntOffset(
+                    shakeX.value.roundToInt(),
+                    0
+                )
+            }
+            // 2. Apply drag offset here (BEFORE gesture detection and clicks so the hit area moves with the card!)
+            .offset {
+                if (isDragged) {
+                    val offset = dragOffsetProvider()
+                    IntOffset(
+                        x = offset.x.roundToInt(),
+                        y = offset.y.roundToInt()
+                    )
+                } else {
+                    IntOffset.Zero
+                }
+            }
+            .then(
+                if (elevation > 0.dp) Modifier.shadow(elevation, RoundedCornerShape(8.dp), clip = false)
+                else Modifier
+            )
+            .background(cardBrush, shape = RoundedCornerShape(8.dp))
+            .then(
+                if (borderColor != Color.Transparent) {
+                    Modifier.border(
+                        width = borderWidth,
+                        color = borderColor,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                } else Modifier
+            )
+            .then(
+                if (isFaceUp) {
+                    Modifier
+                        .pointerInput(card.id) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = true)
+                                down.consume() // Consume Down event immediately to prevent touch leaks to overlapping cards!
+                                
+                                var isDragging = false
+                                
+                                try {
+                                    while (true) {
+                                        val event = awaitPointerEvent()
+                                        val anyPressed = event.changes.any { it.pressed }
+                                        if (!anyPressed) {
+                                            break
+                                        }
+                                        
+                                        val dragChange = event.changes.firstOrNull { it.id == down.id }
+                                        if (dragChange != null) {
+                                            if (dragChange.isConsumed) {
+                                                break
+                                            }
+                                            
+                                            val dragAmount = dragChange.position - dragChange.previousPosition
+                                            if (dragAmount.getDistanceSquared() > 0.5f) {
+                                                if (!isDragging) {
+                                                    isDragging = true
+                                                    if (currentInteractionEnabled) {
+                                                        currentOnDragStart()
+                                                    }
+                                                }
+                                                dragChange.consume()
+                                                if (currentInteractionEnabled) {
+                                                    currentOnDrag(dragAmount)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    if (currentInteractionEnabled) {
+                                        if (isDragging) {
+                                            val currentOffset = currentDragOffsetProvider()
+                                            val dropCenter = Offset(
+                                                cardPositionInRoot.x + currentOffset.x + (cardSize.width / 2),
+                                                cardPositionInRoot.y + currentOffset.y + (cardSize.height / 2)
+                                            )
+                                            currentOnDragEnd(dropCenter)
+                                        } else {
+                                            // Simple click/tap - do not select or float card!
+                                            currentOnTap()
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    if (currentInteractionEnabled && isDragging) {
+                                        currentOnDragCancel()
+                                    }
+                                }
+                            }
+                        }
+                } else {
+                    Modifier
+                }
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 85.dp, height = 110.dp)
+                .clip(RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isFaceUp) {
+                // کادر داخلی روی کارت‌های معمولی (کارت دسته‌بندی کادر داخلی ندارد)
+                if (!card.isCategory) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(5.dp)
+                            .border(1.8.dp, CardFaceInnerBorder, RoundedCornerShape(5.dp))
+                    )
+                }
+
+                val hasSpace = card.text.contains(" ")
+                val longestSubword = if (hasSpace) {
+                    card.text.split(" ").maxOfOrNull { it.length } ?: card.text.length
+                } else {
+                    card.text.length
+                }
+
+                val dynamicFontSize = when {
+                    longestSubword >= 12 -> 11.sp
+                    longestSubword >= 10 -> 12.5.sp
+                    longestSubword >= 8 -> 14.sp
+                    longestSubword >= 6 -> 15.5.sp
+                    else -> 17.sp
+                }
+                val dynamicLetterSpacing = when {
+                    longestSubword >= 11 -> (-0.5).sp
+                    longestSubword >= 9 -> (-0.2).sp
+                    else -> 0.sp
+                }
+                val maxLinesCount = if (hasSpace) 2 else 1
+
+                if (card.isCategory) {
+                    // Category / Target Number Card
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Image(
+                            painter = painterResource(id = R.drawable.crown),
+                            contentDescription = "Target Crown",
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = 10.dp)
+                                .size(24.dp),
+                            colorFilter = ColorFilter.tint(CardCategoryCrown)
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(start = 6.dp, top = 22.dp, end = 6.dp, bottom = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = card.text,
+                                color = CardCategoryText,
+                                fontFamily = nunitoFont,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Black,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                } else {
+                    val mathTokens = remember(card.text) {
+                        val t = card.text.trim().split("\\s+".toRegex())
+                        if (t.size == 3 && t[1] in listOf("+", "-", "−", "×", "x", "X", "*", "÷", "/")) {
+                            t
+                        } else null
+                    }
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 5.dp)
+                    ) {
+                        if (isJoker) {
+                            Text(
+                                text = if (isPersian) "🃏 جوکر" else "🃏 JOKER",
+                                color = Color(0xFF6B21A8),
+                                fontFamily = nunitoFont,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.W800,
+                                modifier = Modifier.padding(bottom = 2.dp)
+                            )
+                            Text(
+                                text = if (isPersian) "هر عدد" else "ANY NUMBER",
+                                color = Color(0xFF991B1B),
+                                fontFamily = nunitoFont,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.W800,
+                                textAlign = TextAlign.Center
+                            )
+                        } else if (mathTokens != null) {
+                            val op1 = mathTokens[0]
+                            val opSymbol = when (mathTokens[1]) {
+                                "*", "x", "X" -> "×"
+                                "-" -> "−"
+                                "/" -> "÷"
+                                else -> mathTokens[1]
+                            }
+                            val op2 = mathTokens[2]
+                            val maxOpLen = maxOf(op1.length, op2.length)
+                            val mathNumSize = if (maxOpLen >= 3) 17.sp else 20.sp
+
+                            Column(
+                                horizontalAlignment = Alignment.End,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = op1,
+                                    color = CardFaceText,
+                                    fontFamily = nunitoFont,
+                                    fontSize = mathNumSize,
+                                    fontWeight = FontWeight.Black,
+                                    textAlign = TextAlign.End
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    Text(
+                                        text = opSymbol,
+                                        color = CardFaceText,
+                                        fontFamily = nunitoFont,
+                                        fontSize = (mathNumSize.value * 0.9f).sp,
+                                        fontWeight = FontWeight.Black,
+                                        modifier = Modifier.padding(end = 4.dp)
+                                    )
+                                    Text(
+                                        text = op2,
+                                        color = CardFaceText,
+                                        fontFamily = nunitoFont,
+                                        fontSize = mathNumSize,
+                                        fontWeight = FontWeight.Black,
+                                        textAlign = TextAlign.End
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .padding(top = 2.dp)
+                                        .width(50.dp)
+                                        .height(2.5.dp)
+                                        .background(CardFaceText)
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = card.text,
+                                color = CardFaceText,
+                                fontFamily = nunitoFont,
+                                fontSize = dynamicFontSize,
+                                fontWeight = FontWeight.W800,
+                                maxLines = maxLinesCount,
+                                letterSpacing = dynamicLetterSpacing,
+                                textAlign = TextAlign.Center,
+                                lineHeight = (dynamicFontSize.value * 1.15f).sp
+                            )
+                        }
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(CardBackBg)
+                )
+            }
+        }
+    }
+}

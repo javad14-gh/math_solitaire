@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme. -->
+    <style name="Theme.MathSolitaire" parent="android:Theme.Material.NoActionBar">
+        <!-- Seamless dark background matching studio splash -->
+        <item name="android:statusBarColor">#07080B</item>
+        <item name="android:navigationBarColor">#07080B</item>
+        <item name="android:windowBackground">#07080B</item>
+    </style>
+</resources>

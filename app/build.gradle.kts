@@ -1,0 +1,117 @@
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.serialization")
+}
+
+android {
+    namespace = "com.math.solitaire"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "com.math.solitaire"
+        minSdk = 26
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0.0"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables {
+            useSupportLibrary = true
+        }
+
+        manifestPlaceholders["TapsellMediationAppKey"] = "jqfpqlgflojgicbkqnidhnmppgppjeoqedirholtnaffhkclhoaffepsaphecmrtmhtjnl"
+        manifestPlaceholders["TapsellMediationAdmobAdapterSignature"] = "ca-app-pub-3940256099942544~3347511713"
+    }
+
+    flavorDimensions += "market"
+    productFlavors {
+        create("bazaar") {
+            dimension = "market"
+            applicationId = "com.persian.mathsolitaire"
+            versionNameSuffix = "-bazaar"
+        }
+        create("myket") {
+            dimension = "market"
+            applicationId = "com.persian.mathsolitaire"
+            versionNameSuffix = "-myket"
+        }
+        create("googlePlay") {
+            dimension = "market"
+            applicationId = "com.math.solitaire"
+            versionNameSuffix = "-gp"
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.8"
+    }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+
+configurations.all {
+    resolutionStrategy {
+        force("androidx.work:work-runtime:2.9.1")
+        force("androidx.work:work-runtime-ktx:2.9.1")
+    }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    implementation("androidx.activity:activity-compose:1.8.2")
+    
+    // Compose
+    val composeBom = platform("androidx.compose:compose-bom:2023.10.01")
+    implementation(composeBom)
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+    
+    // Kotlin Serialization for JSON saving/loading sessions
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
+
+    // Google Mobile Ads (AdMob) SDK
+    implementation("com.google.android.gms:play-services-ads:22.6.0")
+
+    // Tapsell Mediation SDK (for Persian / Bazaar market)
+    implementation("ir.tapsell:tapsell:1.3.0")
+    implementation("ir.tapsell.mediation.adapter:legacy:1.3.0")
+    implementation("ir.tapsell.mediation.adapter:admob:1.3.0")
+
+    // Test dependencies
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2023.10.01"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
